@@ -1,6 +1,8 @@
 package com.damadev.simplecrud
 
+import android.app.AlertDialog
 import android.app.ProgressDialog
+import android.content.DialogInterface
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -24,8 +26,15 @@ class ManageStudentActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_manage_student)
 
-        btnCreate.setOnClickListener {
-            create()
+        btnCreate.setOnClickListener { create() }
+        btnUpdate.setOnClickListener { update() }
+        btnDelete.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Konfirmasi")
+                .setMessage("Hapus data ini?")
+                .setPositiveButton("HAPUS", DialogInterface.OnClickListener { dialogInterface, i -> delete() })
+                .setNegativeButton("BATAL", DialogInterface.OnClickListener { dialogInterface, i -> dialogInterface.dismiss() })
+                .show()
         }
 
         i = intent
@@ -97,5 +106,64 @@ class ManageStudentActivity : AppCompatActivity() {
         } else {
             rgGender.check(R.id.radioGirl)
         }
+    }
+
+    private fun update() {
+
+        val loading = ProgressDialog(this)
+        loading.setMessage("Mengubah data...")
+        loading.show()
+
+        AndroidNetworking.post(ApiEndPoint.UPDATE)
+            .addBodyParameter("nim", txNim.text.toString())
+            .addBodyParameter("name", txName.text.toString())
+            .addBodyParameter("address", txAddress.text.toString())
+            .addBodyParameter("gender", gender)
+            .setPriority(Priority.MEDIUM)
+            .build()
+            .getAsJSONObject(object : JSONObjectRequestListener {
+                override fun onResponse(response: JSONObject?) {
+                    loading.dismiss()
+                    Toast.makeText(applicationContext, response?.getString("message"), Toast.LENGTH_SHORT).show()
+
+                    if (response?.getString("message")?.contains("successfully")!!) {
+                        this@ManageStudentActivity.finish()
+                    }
+                }
+
+                override fun onError(anError: ANError?) {
+                    loading.dismiss()
+                    Log.d("onError", anError?.errorDetail?.toString())
+                    Toast.makeText(applicationContext, "Connection Failure", Toast.LENGTH_SHORT).show()
+                }
+            })
+    }
+
+    private fun delete() {
+
+        val loading = ProgressDialog(this)
+        loading.setMessage("Menghapus data...")
+        loading.show()
+
+        AndroidNetworking.get(ApiEndPoint.DELETE+"?nim="+txNim.text.toString())
+            .setPriority(Priority.MEDIUM)
+            .build()
+            .getAsJSONObject(object : JSONObjectRequestListener {
+                override fun onResponse(response: JSONObject?) {
+                    loading.dismiss()
+                    Toast.makeText(applicationContext, response?.getString("message"), Toast.LENGTH_SHORT).show()
+
+                    if (response?.getString("message")?.contains("successfully")!!) {
+                        this@ManageStudentActivity.finish()
+                    }
+                }
+
+                override fun onError(anError: ANError?) {
+                    loading.dismiss()
+                    Log.d("onError", anError?.errorDetail?.toString())
+
+                    Toast.makeText(applicationContext, "Connection Failure", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 }
